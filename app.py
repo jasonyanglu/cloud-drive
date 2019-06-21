@@ -27,9 +27,8 @@ class UploadForm(FlaskForm):
 def upload_file():
     form = UploadForm()
     if form.validate_on_submit():
-        for filename in request.files.getlist('photo'):
-            name = hashlib.md5('admin' + str(time.time())).hexdigest()[:15]
-            photos.save(filename, name=name + '.')
+        for file in request.files.getlist('photo'):
+            photos.save(file, name=file.filename)
         success = True
     else:
         success = False
