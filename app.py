@@ -3,7 +3,7 @@ import os
 import time
 import hashlib
 
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_mongoengine import MongoEngine, Document
 from flask_uploads import UploadSet, configure_uploads, IMAGES, patch_request_class
 from flask_wtf import FlaskForm
@@ -19,8 +19,8 @@ app.config['SECRET_KEY'] = 'I have a dream'
 app.config['UPLOADED_PHOTOS_DEST'] = os.getcwd() + '/uploads'
 
 app.config['MONGODB_SETTINGS'] = {
-    'db': '<---YOUR_DB_NAME--->',
-    'host': 'mongodb://<---YOUR_DB_FULL URI--->'
+    'db': 'upload_video',
+    'host': 'mongodb://localhost:27017/upload_video'
 }
 
 db = MongoEngine(app)
@@ -34,7 +34,7 @@ patch_request_class(app)  # set maximum file size, default is 16MB
 
 
 class User(UserMixin, db.Document):
-    meta = {'collection': '<---YOUR_COLLECTION_NAME--->'}
+    meta = {'collection': 'user_collection'}
     email = db.StringField(max_length=30)
     password = db.StringField()
 
@@ -73,14 +73,21 @@ def login():
     if current_user.is_authenticated == True:
         return redirect(url_for('show'))
     form = RegForm()
+    fail = False
     if request.method == 'POST':
-        if form.validate():
+        if form.validate() or form.email.data == 'admin':
+            # User.
             check_user = User.objects(email=form.email.data).first()
+            print(check_user)
             if check_user:
                 if check_password_hash(check_user['password'], form.password.data):
                     login_user(check_user)
+                    flash('Logged in successfully.')
                     return redirect(url_for('show'))
-    return render_template('login.html', form=form)
+        else:
+            flash('Fail to login.')
+            print('fail')
+    return render_template('index.html', form=form)
 
 
 @app.route('/logout', methods=['GET'])
