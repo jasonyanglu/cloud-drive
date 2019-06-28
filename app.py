@@ -64,14 +64,16 @@ def register():
                 hashpass = generate_password_hash(form.password.data, method='sha256')
                 hey = User(form.email.data, hashpass).save()
                 login_user(hey)
-                return redirect(url_for('show'))
+                return redirect(url_for('upload_file'))
     return render_template('register.html', form=form)
 
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated == True:
-        return redirect(url_for('show'))
+        print('show here')
+        return redirect(url_for('upload_file'))
+        #return redirect(url_for('login'))
     form = RegForm()
     fail = False
     if request.method == 'POST':
@@ -80,10 +82,15 @@ def login():
             check_user = User.objects(email=form.email.data).first()
             print(check_user)
             if check_user:
+                print(check_user['password'])
+                print(form.password.data)
+                print(check_password_hash(check_user['password'], form.password.data))
                 if check_password_hash(check_user['password'], form.password.data):
                     login_user(check_user)
                     flash('Logged in successfully.')
-                    return redirect(url_for('show'))
+                    return redirect(url_for('upload_file'))
+                else:
+                    print('wrong password')
         else:
             flash('Fail to login.')
             print('fail')
