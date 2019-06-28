@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<title>Upload File</title>
+<title>Upload Video</title>
 <p>You are currently logged in as {{ name }}</p>
 <a href='logout'>Logout</a>
 <h1>Upload File</h1>
@@ -12,7 +12,15 @@
     {{ form.photo(multiple="multiple")}}
     {% for error in form.photo.errors %}
         <span style="color: red;">{{ error }}</span>
-    {% endfor %}
+    {% endfor %}<br>
+    Age (month): {{ form.age }}
+    {% for error in form.age.errors %}
+        <span style="color: red;">{{ error }}</span>
+    {% endfor %}<br>
+    Gender: {{ form.gender }}
+    {% for error in form.gender.errors %}
+        <span style="color: red;">{{ error }}</span>
+    {% endfor %}<br>
     {{ form.submit }}
 </form>
 

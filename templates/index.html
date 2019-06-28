@@ -2,9 +2,15 @@
 <form action="/" method="post">
   <p>Email</p>
   {{ form.email }}
+  {% for message in form.email.errors %}
+   <span style="color: red;">{{ message }}</span>
+  {% endfor %}
   <p>Password</p>
   {{ form.password }}
   {{ form.hidden_tag() }}
+  {% for message in form.password.errors %}
+    <span style="color: red;">{{ message }}</span>
+  {% endfor %}
   <br>
   <br>
   <input type="submit" value="Login">
@@ -12,3 +18,13 @@
 <form action="/register" method="post">
     <input type="submit" value="Register">
 </form>
+
+{% if no_user %}
+<br>
+<p><span style="color: red;">Email is not registered</span></p>
+{% endif %}
+
+{% if wrong_password %}
+<br>
+<p><span style="color: red;">Password is wrong</span></p>
+{% endif %}

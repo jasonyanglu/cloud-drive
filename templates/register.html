@@ -2,9 +2,15 @@
 <form action="/register" method="post">
     <p>Email</p>
     {{ form.email }}
+    {% for message in form.email.errors %}
+     {{ message }}
+    {% endfor %}
     <p>Password</p>
     {{ form.password }}
     {{ form.hidden_tag() }}
+    {% for message in form.password.errors %}
+     {{ message }}
+    {% endfor %}
     <br>
     <br>
     <input type="submit" value="Submit">
