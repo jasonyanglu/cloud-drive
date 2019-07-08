@@ -9,8 +9,8 @@
 
 <form method="POST" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
-    {{ form.photo(multiple="multiple")}}
-    {% for error in form.photo.errors %}
+    {{ form.video(multiple="multiple")}}
+    {% for error in form.video.errors %}
         <span style="color: red;">{{ error }}</span>
     {% endfor %}<br>
     Age (month): {{ form.age }}

@@ -14,23 +14,23 @@ from wtforms.validators import Email, Length, InputRequired, NumberRange
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'I have a dream'
-app.config['UPLOADED_PHOTOS_DEST'] = os.getcwd() + '/uploads'
+application = Flask(__name__)
+application.config['SECRET_KEY'] = 'I have a dream'
+application.config['UPLOADED_VIDEOS_DEST'] = '/tmp/uploads'
 
-app.config['MONGODB_SETTINGS'] = {
+application.config['MONGODB_SETTINGS'] = {
     'db': 'upload_video',
     'host': 'mongodb://localhost:27017/upload_video'
 }
 
-db = MongoEngine(app)
+db = MongoEngine(application)
 login_manager = LoginManager()
-login_manager.init_app(app)
+login_manager.init_app(application)
 login_manager.login_view = 'login'
 
-photos = UploadSet('photos', IMAGES)
-configure_uploads(app, photos)
-patch_request_class(app, 100 * 1024 * 1024)  # set maximum file size 100MB
+videos = UploadSet('videos', extensions=('mov', 'mp4', 'MOV', 'MP4', '3pg', '3GP', 'avi', 'AVI'))
+configure_uploads(application, videos)
+patch_request_class(application, 100 * 1024 * 1024)  # set maximum file size 100MB
 
 
 class User(UserMixin, db.Document):
@@ -48,7 +48,7 @@ class Video(db.Document):
 
 
 class UploadForm(FlaskForm):
-    photo = FileField(validators=[FileAllowed(photos, 'Image Only!'), FileRequired('Choose a file!')])
+    video = FileField(validators=[FileAllowed(videos, 'Video Only!'), FileRequired('Choose a file!')])
     age = IntegerField('age', validators=[InputRequired(), NumberRange(0, 120)])
     gender = SelectField('gender', choices=[('male', 'Male'), ('female', 'Female')], validators=[InputRequired()])
     submit = SubmitField('Upload')
@@ -64,7 +64,7 @@ def load_user(user_id):
     return User.objects(pk=user_id).first()
 
 
-@app.route('/register', methods=['GET', 'POST'])
+@application.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegForm()
     if request.method == 'POST':
@@ -78,7 +78,7 @@ def register():
     return render_template('register.html', form=form)
 
 
-@app.route('/', methods=['GET', 'POST'])
+@application.route('/', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('upload_file'))
@@ -103,40 +103,53 @@ def login():
     return render_template('index.html', form=form, wrong_password=wrong_password, no_user=no_user)
 
 
-@app.route('/logout', methods=['GET'])
+@application.route('/logout', methods=['GET'])
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
 
-@app.route('/show', methods=['GET', 'POST'])
+@application.route('/show', methods=['GET', 'POST'])
 @login_required
 def upload_file():
     form = UploadForm()
     if form.validate_on_submit():
-        for file in request.files.getlist('photo'):
-            photos.save(file, folder=current_user.email, name=file.filename)
-            Video(file_name=file.filename, email=current_user.email, age=form.age.data, gender=form.gender.data).save()
+        for file in request.files.getlist('video'):
+            query_video = Video.objects(email=current_user.email, file_name=file.filename).first()
+            if query_video is not None:
+                ext_num = 1
+                while True:
+                    file_name = file.filename[:-4] + '_' + str(ext_num) + file.filename[-4:]
+                    query_video = Video.objects(email=current_user.email, file_name=file_name).first()
+                    if query_video is None:
+                        break
+                    else:
+                        ext_num += 1
+            else:
+                file_name = file.filename
+            videos.save(file, folder=current_user.email, name=file_name)
+            Video(file_name=file_name, email=current_user.email, age=form.age.data, gender=form.gender.data).save()
         success = True
     else:
         success = False
     return render_template('show.html', form=form, success=success, name=current_user.email)
 
 
-@app.route('/manage')
+@application.route('/manage')
 def manage_file():
     files_list = []
     if current_user.email == 'admin':
-        for email in os.listdir(app.config['UPLOADED_PHOTOS_DEST']):
-            email_dir = os.path.join(app.config['UPLOADED_PHOTOS_DEST'], email)
+        for email in os.listdir(application.config['UPLOADED_VIDEOS_DEST']):
+            email_dir = os.path.join(application.config['UPLOADED_VIDEOS_DEST'], email)
             if os.path.isdir(email_dir):
                 for file in os.listdir(email_dir):
-                    query_video = Video.objects(email=email, file_name=file).first()
-                    files_list.append([file, email, query_video['age'], query_video['gender']])
+                    if not file.startswith('.'):
+                        query_video = Video.objects(email=email, file_name=file).first()
+                        files_list.append([file, email, query_video['age'], query_video['gender']])
 
     else:
-        files = os.listdir(os.path.join(app.config['UPLOADED_PHOTOS_DEST'], current_user.email))
+        files = os.listdir(os.path.join(application.config['UPLOADED_VIDEOS_DEST'], current_user.email))
         for file in files:
             query_video = Video.objects(email=current_user.email, file_name=file).first()
             files_list.append([file, current_user.email, query_video['age'], query_video['gender']])
@@ -144,24 +157,25 @@ def manage_file():
     return render_template('manage.html', files_list=files_list, name=current_user.email)
 
 
-@app.route('/open/<filename>')
+@application.route('/open/<filename>')
 def open_file(filename):
-    file_url = photos.url(filename)
+    file_url = videos.url(filename)
     return render_template('browser.html', file_url=file_url)
 
 
-@app.route('/delete/<email>/<filename>')
+@application.route('/delete/<email>/<filename>')
 def delete_file(filename, email):
-    file_path = photos.path(os.path.join(email, filename))
-    # file_path = photos.path(filename)
+    file_path = videos.path(os.path.join(email, filename))
     os.remove(file_path)
+    query_video = Video.objects(email=email, file_name=filename).first()
+    query_video.delete()
     return redirect(url_for('manage_file'))
 
 
-@app.route('/download/<email>/<filename>', methods=['GET', 'POST'])
+@application.route('/download/<email>/<filename>', methods=['GET', 'POST'])
 def download_file(filename, email):
-    file_path = os.path.join(app.config['UPLOADED_PHOTOS_DEST'], email)
+    file_path = os.path.join(application.config['UPLOADED_VIDEOS_DEST'], email)
     return send_from_directory(directory=file_path, filename=filename, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)
