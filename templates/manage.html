@@ -7,8 +7,24 @@
 <a href="{{ url_for('manage_file') }}">Manage</a>
 <hr>
 
+<table border="1">
+    <tr>
+        <th>File name</th>
+        <th>Email</th>
+        <th>Age</th>
+        <th>Gender</th>
+        <th>Action</th>
+    </tr>
 {% for (file, email, age, gender) in files_list %}
-    - {{ file }}&nbsp&nbsp&nbsp&nbsp{{email}}&nbsp&nbsp&nbsp&nbsp{{ age }}&nbsp&nbsp&nbsp&nbsp{{ gender }}
-    <a href="{{ url_for('download_file', filename=file, email=email) }}">download</a>
-    <a href="{{ url_for('delete_file', filename=file, email=email) }}">delete</a><br>
+    <tr>
+        <td>{{file}}</td>
+        <td>{{email}}</td>
+        <td>{{age}}</td>
+        <td>{{gender}}</td>
+        <td>
+            <a href="{{ url_for('download_file', filename=file, email=email) }}">download</a>
+            <a href="{{ url_for('delete_file', filename=file, email=email) }}">delete</a><br>
+        </td>
+    </tr>
 {% endfor %}
+</table>
