@@ -5,7 +5,7 @@
     {% for message in form.email.errors %}
      {{ message }}
     {% endfor %}
-    <p>Password</p>
+    <p>Password (8-20 characters)</p>
     {{ form.password }}
     {{ form.hidden_tag() }}
     {% for message in form.password.errors %}
@@ -14,4 +14,7 @@
     <br>
     <br>
     <input type="submit" value="Submit">
+    {% if user_exist %}
+    <p>{{ email }} has been registered!</p>
+    {% endif %}
 </form>

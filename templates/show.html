@@ -26,5 +26,7 @@
 
 {% if success %}
 <br>
-<p>Upload Success!</p>
+{% for file_name in file_names %}
+    <p>Uploaded {{ file_name }} successfully!</p>
+{% endfor %}
 {% endif %}

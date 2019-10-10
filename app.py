@@ -28,7 +28,8 @@ login_manager = LoginManager()
 login_manager.init_app(application)
 login_manager.login_view = 'login'
 
-videos = UploadSet('videos', extensions=('mov', 'mp4', 'MOV', 'MP4', '3pg', '3GP', 'avi', 'AVI'))
+videos = UploadSet('videos', extensions=('mov', 'mp4', 'MOV', 'MP4', '3pg', '3GP', 'avi', 'AVI', 'MKV', 'mkv', 'WMV',
+                                         'wmv', 'RMVB', 'rmvb', 'MPG', 'mpg', '3GP', '3gp'))
 configure_uploads(application, videos)
 patch_request_class(application, 100 * 1024 * 1024)  # set maximum file size 100MB
 
@@ -67,15 +68,19 @@ def load_user(user_id):
 @application.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegForm()
+    user_exist = 0
     if request.method == 'POST':
         if form.validate():
             existing_user = User.objects(email=form.email.data).first()
             if existing_user is None:
                 hashpass = generate_password_hash(form.password.data, method='sha256')
                 hey = User(form.email.data, hashpass).save()
+                os.mkdir(os.path.join(application.config['UPLOADED_VIDEOS_DEST'], form.email.data))
                 login_user(hey)
                 return redirect(url_for('upload_file'))
-    return render_template('register.html', form=form)
+            else:
+                user_exist = 1
+    return render_template('register.html', form=form, user_exist=user_exist, email=form.email.data)
 
 
 @application.route('/', methods=['GET', 'POST'])
@@ -114,6 +119,7 @@ def logout():
 @login_required
 def upload_file():
     form = UploadForm()
+    file_names = []
     if form.validate_on_submit():
         for file in request.files.getlist('video'):
             query_video = Video.objects(email=current_user.email, file_name=file.filename).first()
@@ -130,10 +136,11 @@ def upload_file():
                 file_name = file.filename
             videos.save(file, folder=current_user.email, name=file_name)
             Video(file_name=file_name, email=current_user.email, age=form.age.data, gender=form.gender.data).save()
+            file_names.append(file_name)
         success = True
     else:
         success = False
-    return render_template('show.html', form=form, success=success, name=current_user.email)
+    return render_template('show.html', form=form, success=success, name=current_user.email, file_names=file_names)
 
 
 @application.route('/manage')
@@ -165,17 +172,23 @@ def open_file(filename):
 
 @application.route('/delete/<email>/<filename>')
 def delete_file(filename, email):
-    file_path = videos.path(os.path.join(email, filename))
-    os.remove(file_path)
-    query_video = Video.objects(email=email, file_name=filename).first()
-    query_video.delete()
-    return redirect(url_for('manage_file'))
+    if current_user.email == 'admin' or current_user.email == email:
+        file_path = videos.path(os.path.join(email, filename))
+        os.remove(file_path)
+        query_video = Video.objects(email=email, file_name=filename).first()
+        query_video.delete()
+        return redirect(url_for('manage_file'))
+    else:
+        return redirect(url_for('manage_file'))
 
 
 @application.route('/download/<email>/<filename>', methods=['GET', 'POST'])
 def download_file(filename, email):
-    file_path = os.path.join(application.config['UPLOADED_VIDEOS_DEST'], email)
-    return send_from_directory(directory=file_path, filename=filename, as_attachment=True)
+    if current_user.email == 'admin' or current_user.email == email:
+        file_path = os.path.join(application.config['UPLOADED_VIDEOS_DEST'], email)
+        return send_from_directory(directory=file_path, filename=filename, as_attachment=True)
+    else:
+        return redirect(url_for('manage_file'))
 
 if __name__ == '__main__':
     application.run(debug=True)
